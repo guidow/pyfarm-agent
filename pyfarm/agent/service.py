@@ -190,7 +190,7 @@ class Agent(object):
         api.putChild("versions", Versions())
         v1 = api.putChild("v1", APIRoot())
         v1.putChild("logging", LogQuery())
-        v1.putChild("assign", Assign())
+        v1.putChild("assign", Assign(self))
 
         return root
 

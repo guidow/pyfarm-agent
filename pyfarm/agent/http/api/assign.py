@@ -94,7 +94,12 @@ class Assign(APIResource):
                     Required("id"): WHOLE_NUMBERS,
                     Required("frame"): NUMBERS}), values)})}
 
+    def __init__(self, service):
+        APIResource.__init__(self)
+        self.service = service
+
     def post(self, **kwargs):
+        print("In pyfarm.agent.http.api.Assign.post")
         request = kwargs["request"]
         data = kwargs["data"]
 
@@ -138,6 +143,8 @@ class Assign(APIResource):
         # In all other cases we have some work to do inside of
         # deferreds so we just have to respond
         else:
+            self.service.submit_batch(data)
+
             request.setResponseCode(ACCEPTED)
             request.finish()
 
@@ -150,7 +157,6 @@ class Assign(APIResource):
         # TODO: Next steps as deferreds.  Some of these are done in the queue,
         #       or will be, but the information the agent has available may be
         #       more up to date and these checks are fast anyway.
-        #   - ensure we have enough ram left to serve the optional requirements
         #   - check for number of cpus currently required by other jobs + this
         #     job to see if we've hit a limit
         #   - get job type (and cache if not already)

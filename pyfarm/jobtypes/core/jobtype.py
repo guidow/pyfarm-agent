@@ -356,11 +356,9 @@ class JobType(object):
             self.state_changed(WorkState.NO_SUCH_COMMAND)
             return
 
-
-
         # prepare command and arguments
-        command = self.assignment["jobtype"]["args"]
-        arguments = self.assignment["jobtype"]["args"]
+        command = self.get_command()
+        arguments = self.get_arguments()
         if arguments[0] != command:
             arguments.insert(0, command)
 
