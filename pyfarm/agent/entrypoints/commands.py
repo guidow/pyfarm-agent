@@ -215,6 +215,9 @@ class AgentEntryPoint(object):
             dest="pretty_json",
             help="If provided do not dump human readable json via the agent's "
                  "REST api")
+        start_general_group.add_argument(
+            "--jobtype-cache-dir", default="jobtypes/",
+            help="Where the agent will store jobtype files")
 
         # start hardware group
         start_hardware_group = start.add_argument_group(
