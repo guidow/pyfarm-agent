@@ -48,6 +48,7 @@ from pyfarm.agent.http.log import Logging
 from pyfarm.agent.http.system import Index, Configuration
 from pyfarm.agent.tasks import ScheduledTaskManager
 from pyfarm.agent.config import config
+from pyfarm.agent.process.manager import ProcessManager
 
 ntplog = getLogger("agent.ntp")
 svclog = getLogger("agent.svc")
@@ -74,6 +75,9 @@ class Agent(object):
         # internally but they are/can be used externally when
         # a method returns a DeferredList
         self.agent_created = Deferred()
+
+        self.waiting_batches = []
+        self.processmanager = ProcessManager(config)
 
     @classmethod
     def agent_api(cls):
@@ -335,6 +339,76 @@ class Agent(object):
                 data=self.system_data())
 
         return create() if run else create
+
+    def callback_batch_finished(self, _):
+        print("In callback_batch_finished")
+        if self.waiting_batches:
+            self.try_to_start_a_batch()
+        else:
+            config["state"] = AgentState.ONLINE
+            # TODO Cancel this deferred if a new batch comes in before this is
+            # finished
+            post("%(master-api)s/agents/%(agent-id)s" % config,
+                 errback=self.errback_mark_agent_as_online,
+                 callback=self.callback_mark_agent_as_online,
+                 data={"state": AgentState.ONLINE})
+
+    def try_to_start_a_batch(self):
+        print "In try_to_start_a_batch(), data"
+        if (not self.processmanager.process_running() and
+            self.waiting_batches):
+            batch = self.waiting_batches.pop(0)
+            deferred_batch = self.processmanager.spawn(batch)
+            deferred_batch.addCallback(self.callback_batch_finished)
+
+            config["state"] = AgentState.RUNNING
+            # Mark this agent as "running" on the master
+            # TODO Cancel this deferred if it is not finished before
+            # deferred_batch
+            post("%(master-api)s/agents/%(agent-id)s" % config,
+                 errback=self.errback_mark_agent_as_running,
+                 callback=self.callback_mark_agent_as_running,
+                 data={"state": AgentState.RUNNING})
+
+    def submit_batch(self, data):
+        # Check whether this batch is already queued or running locally
+        # TODO: Fix race condition, probably needs a lock
+        print("In submit_batch() data: %r" % data)
+        known_batches = self.waiting_batches
+        if self.processmanager.current_batch:
+            known_batches += [self.processmanager.current_batch]
+        tasks_in_batch = set()
+        for task in data["tasks"]:
+            tasks_in_batch.add(task["frame"])
+
+        for i in known_batches:
+            print("i: %r" % i)
+            if (i["job"]["id"] == data["job"]["id"] and
+                i["jobtype"]["name"] == data["jobtype"]["name"] and
+                i["jobtype"]["version"] == data["jobtype"]["version"]):
+                tasks_in_existing = set()
+                for task in i["tasks"]:
+                    tasks_in_existing.add(task["frame"])
+                if tasks_in_batch == tasks_in_existing:
+                    svclog.debug("Tried to submit a batch twice")
+                    return
+
+        self.waiting_batches.append(data)
+        self.try_to_start_a_batch()
+
+    def callback_mark_agent_as_online(self):
+        pass
+
+    def callback_mark_agent_as_running(self):
+        pass
+
+    def errback_mark_agent_as_online(self):
+        # TODO
+        pass
+
+    def errback_mark_agent_as_running(self):
+        # TODO
+        pass
 
     def callback_agent_created(self, response):
         """
