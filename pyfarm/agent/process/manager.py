@@ -24,6 +24,13 @@ Root class for spawning and management of new processes.
 from functools import partial
 
 from twisted.python import log
+from twisted.internet import reactor, defer
+
+from pyfarm.agent.process.protocol import WorkerProcess
+
+
+class TooManyProcesses(Exception):
+    pass
 
 
 class ProcessManager(object):
@@ -32,6 +39,8 @@ class ProcessManager(object):
     def __init__(self, config):
         self.config = config
         self.log = partial(log.msg, system=self.__class__.__name__)
+        self.current_process = None
+        self.current_batch = None
 
     def load_jobclass(self, load_type, load_from):
         # TODO: handle the other import_type cases after this is working
@@ -39,11 +48,26 @@ class ProcessManager(object):
         # TODO: ensure class is subclassing the jobtype base class (error if not)
         raise NotImplementedError
 
+    def process_running(self):
+        return self.current_process is not None
+
     def spawn(self, assignment):
         self.log(
             "attempting to spawn process for "
-            "job %(job)s task %(task)s" % assignment)
+            "job %(job)s task %(tasks)s" % assignment)
 
+        if self.current_process:
+            self.log("Error: Attempted to spawn a child process while one is "
+                     "already running")
+            raise TooManyProcesses("There is already a process running")
+
+        deferred = defer.Deferred()
+        deferred.addCallback(self.callback_process_ended)
+        self.current_process = WorkerProcess(self.config, deferred)
+        self.current_batch = assignment
+
+        reactor.spawnProcess(self.current_process, '/bin/ls', ['ls'])
+        """
         # attempt to load the jobtype class
         jobclass = self.load_jobclass(
             assignment["jobtype"]["load_type"],
@@ -52,12 +76,19 @@ class ProcessManager(object):
         if jobclass is None:
             self.log("spawn failed for job %(job)s task %(task)s" % assignment)
             return
-
+        """
         # TODO: instance jobclass with assignment data
         # TODO: instance the protocol object, pass in jobclass
         # TODO: use jobclass to construct arguments to reactor.spawnProcess
         # TODO: run reactor.spawnProcess (protocol will use jobclass to POST to /tasks/<id>)
         # TODO: store in self.processes
+
+        return deferred
+
+    def callback_process_ended(self, _):
+        print("In callback_process_ended()")
+        self.current_process = None
+        self.current_batch = None
 
     def stop(self, assignment):
         # TODO: /basically/ the reverse of the above

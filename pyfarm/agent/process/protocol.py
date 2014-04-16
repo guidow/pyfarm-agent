@@ -21,17 +21,35 @@ Protocol
 The protocol implementation for a single process.
 """
 
-from twisted.internet.protocol import ProcessProtocol as Protocol
+from twisted.internet.protocol import ProcessProtocol
+from twisted.internet.error import ProcessDone, ProcessTerminated
 
 
-class ProcessProtocol(Protocol):
+class WorkerProcess(ProcessProtocol):
+    def __init__(self, config, deferred):
+        #ProcessProtocol.__init__(self)
+        self.config = config
+        self.deferred = deferred
+
+    def outReceived(self, data):
+        print("Received output from process: %s" % data)
+
+    def processEnded(self, status):
+        if isinstance(status.value, ProcessDone):
+            print("Process has finished successfully")
+            self.deferred.callback(None)
+        else:
+            print("Process has terminated, return code: ", status.value.exitCode)
+            self.deferred.errback(None)
+
+class TestProto(ProcessProtocol):
     """
     Subclass of :class:`.Protocol` which hooks into the various systems
     necessary to run and manage a process.  More specifically, this helps
     to act as plumbing between the process being run and the job type.
     """
     def __init__(self, config):
-        Protocol.__init__(self)
+        ProcessProtocol.__init__(self)
         self.config = config
         # TODO: pull in settings specific to the process
         # TODO: register a manager so we can send events up to a central class
