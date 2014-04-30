@@ -394,7 +394,7 @@ def request(method, url, **kwargs):
     debug_url = build_url(url, debug_kwargs.pop("params", None))
     logger.debug(
         "Queued %s %s, kwargs: %r", method, debug_url, debug_kwargs)
-    deferred = treq.request(method, url, **kwargs)
+    deferred = treq.request(method, quote(url, safe=":/"), **kwargs)
     deferred.addCallback(unpack_response)
     deferred.addErrback(errback)
 
