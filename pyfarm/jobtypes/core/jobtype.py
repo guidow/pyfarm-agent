@@ -1040,12 +1040,28 @@ class JobType(object):
         self.process_stdout(protocol, stdout)
 
     def preprocess_stdout(self, protocol, stdout):
+        """
+        Overridable function that is called before received_stdout() does any
+        internal operations on the process' output.  It can modify the data
+        received_stdout() works on by returning the modified data.
+        """
         pass
 
     def process_stdout(self, protocol, stdout):
         """
         Overridable function called when we receive data from a child process'
         stdout.
+
+        Note:
+        The output is not yet split into separate lines at this point, but rather
+        into whatever chunks the operating system's IO-buffers would give us.  If
+        you want to work on individual lines instead, leave this methid as it is
+        and override process_stdout_line() instead.
+
+        Note:
+        If you override this functions and do not forward the line-split output
+        to received_stdout_line(), the output may not get logged.
+
         The default implementation will split the output into lines and forward
         those to received_stdout_line(), which will eventually forward it to
         process_stdout_line()
@@ -1100,6 +1116,15 @@ class JobType(object):
         self.process_stdout_line(protocol, line)
 
     def preprocess_stdout_line(self, protocol, line):
+        """
+        Overridable function that is called before received_stdout_line() does
+        any internal operations the process' output, including logging it.
+        It can modify the data received_stdout() works on by returning the
+        modified data.
+
+        This method should not be overridden for anything that could as well be
+        done by overriding process_stdout_line().
+        """
         pass
 
     def process_stdout_line(self, protocol, line):
