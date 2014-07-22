@@ -840,7 +840,7 @@ class JobType(Cache, Process, TypeChecks):
             if ends_on_fragment:
                 self.stdout_line_fragments[protocol.pid] = dangling_fragment
         else:
-            if protocol.id in self.stdout_line_fragments:
+            if protocol.pid in self.stdout_line_fragments:
                 self.stdout_line_fragments[protocol.pid] += stdout
             else:
                 self.stdout_line_fragments[protocol.pid] = stdout
