@@ -478,6 +478,7 @@ class AgentEntryPoint(object):
                                 "Process ID in %s is stale.",
                                 config["agent_lock_file"])
                             try:
+                                pidfile.close()
                                 os.remove(config["agent_lock_file"])
                             except OSError as e:
                                 logger.error(
