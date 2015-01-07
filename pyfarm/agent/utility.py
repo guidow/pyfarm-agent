@@ -49,6 +49,7 @@ except ImportError:  # pragma: no cover
 from voluptuous import Schema, Any, Required, Optional, Invalid
 
 from pyfarm.core.enums import STRING_TYPES
+from pyfarm.core.enums import WINDOWS, LINUX, MAC, BSD
 from pyfarm.agent.config import config
 from pyfarm.agent.logger import getLogger
 
@@ -288,6 +289,16 @@ class AgentUUID(object):
     >>>
     """
     log = getLogger("agent.uuid")
+    if LINUX:
+        uuid_path = config["uuid_path_linux"]
+    elif BSD:
+        uuid_path = config["uuid_path_bsd"]
+    elif WINDOWS:
+        uuid_path = config["uuid_path_windows"]
+    elif MAC:
+        uuid_path = config["uuid_path_mac"]
+    else:
+        raise Exception("Unrecognized OS type")
 
     @classmethod
     def _load(cls, path):
@@ -340,7 +351,7 @@ class AgentUUID(object):
             return path
 
         except (OSError, IOError) as e:
-            cls.log.warning("Failed to write %s, %s", path, e)
+            cls.log.warning("Failed to write UUID to %s, %s", path, e)
             raise
 
     @classmethod
@@ -351,49 +362,42 @@ class AgentUUID(object):
 
         :param string path:
             An explicit path to load the UUID from.  In all other cases
-            we'll attempt to load the UUID from any directory
-            configuration files could load from.
+            we'll attempt to load the UUID from the path specified in the
+            configuration.
         """
-        cls.log.debug("Attempting to load agent UUID from disk")
-
         if path is not None:
-            return cls._load(path)
+            uuid_path = path
+        else:
+            uuid_path = cls.uuid_path
 
-        for directory in config.directories(validate=False):
-            path = join(directory, "uuid.dat")
-            agent_uuid = cls._load(path)
-            if agent_uuid is not None:
-                cls.log.debug(
-                    "Cached UUID %s was loaded from %r", agent_uuid, path)
-                return agent_uuid
+        cls.log.debug("Attempting to load agent UUID from %s", uuid_path)
 
-        cls.log.warning(
-            "Unable to locate cached agent UUID, one will be generated.")
+        agent_uuid = cls._load(uuid_path)
+        if agent_uuid is not None:
+            cls.log.debug("Cached UUID %s was loaded from %r", agent_uuid, path)
+            return agent_uuid
+        else:
+            cls.log.warning("Unable to locate cached agent UUID, one will be "
+                            "generated.")
+            return None
 
     @classmethod
     def save(cls, agent_uuid, path=None):
         """
         This classmethod will save ``agent_uuid`` to ``path`` or
-        to the first available path in the configuration.
+        to the path specified in the configuration.
         """
         assert isinstance(agent_uuid, UUID), agent_uuid
-        cls.log.debug("Attempting to save UUID %s to disk.", agent_uuid)
 
         if path is not None:
-            return cls._save(agent_uuid, path=path)
-
-        directories = config.directories(validate=False, unversioned_only=True)
-        directories.reverse()
-
-        for directory in directories:
-            try:
-                return cls._save(agent_uuid, join(directory, "uuid.dat"))
-            except (OSError, IOError):
-                pass
+            uuid_path = path
         else:
-            raise OSError(
-                "Failed to cache agent UUID after trying to write "
-                "uuid.dat to %r" % directories)
+            uuid_path = cls.uuid_path
+
+        cls.log.debug("Attempting to save UUID %s to %s.",
+                      agent_uuid, uuid_path)
+
+        return cls._save(agent_uuid, uuid_path)
 
     @classmethod
     def generate(cls):

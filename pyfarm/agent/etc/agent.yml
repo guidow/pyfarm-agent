@@ -173,3 +173,10 @@ sysinfo_command_lspci:
   - /sbin/lspci
   - /usr/sbin/lspci
   - /usr/bin/lspci
+
+# The full path where we save our UUID, with different possible settings for
+# different OS types
+uuid_path_linux: /etc/pyfarm/agent/uuid.dat
+uuid_path_bsd: /etc/pyfarm/agent/uuid.dat
+uuid_path_windows: '%LOCALAPPDATA%\pyfarm\agent\uuid.dat'
+uuid_path_mac: /Library/pyfarm/agent/uuid.dat
