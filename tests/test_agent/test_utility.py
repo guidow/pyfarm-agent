@@ -240,30 +240,14 @@ class TestAgentUUID(TestCase):
         self.assertEqual(AgentUUID.load(path), data)
 
     def test_load_from_defaults(self):
-        directories = [
-            tempfile.mkdtemp(),
-            tempfile.mkdtemp(),
-            tempfile.mkdtemp()
-        ]
-        uuids = []
-        for path in directories:
-            self.addCleanup(self._rmdir, path)
-            filepath = join(path, "uuid.dat")
-            data = uuid4()
-            AgentUUID._save(data, filepath)
-            uuids.append(data)
+        directory = tempfile.mkdtemp()
+        uuid = uuid4()
+        self.addCleanup(self._rmdir, path)
+        filepath = join(path, "uuid.dat")
+        AgentUUID.save(uuid, filepath)
 
-        def dirs(**kwargs):
-            self.assertIs(kwargs.pop("validate", None), False)
-            self.assertNot(kwargs)
-            return directories
-
-        with patch.object(config, "directories", dirs):
-            while directories:
-                data = AgentUUID.load()
-                self.assertEqual(uuids[0], data)
-                directories.pop(0)
-                uuids.pop(0)
+        loaded = AgentUUID.load(filepath)
+        self.assertEqual(uuid, loaded)
 
     def test_save_path(self):
         data = uuid4()
