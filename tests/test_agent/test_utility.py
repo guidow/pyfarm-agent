@@ -256,29 +256,3 @@ class TestAgentUUID(TestCase):
         self.assertEqual(path, save_path)
         with open(path, "r") as saved_file:
             self.assertEqual(saved_file.read(), str(data))
-
-    def test_save_defaults(self):
-        directories = [
-            tempfile.mkdtemp(),
-            tempfile.mkdtemp(),
-            tempfile.mkdtemp()
-        ]
-        uuids = []
-        for path in directories:
-            self.addCleanup(self._rmdir, path)
-            uuids.append(uuid4())
-
-        def dirs(**kwargs):
-            self.assertIs(kwargs.pop("validate", None), False)
-            self.assertIs(kwargs.pop("unversioned_only", None), True)
-            self.assertNot(kwargs)
-            return directories
-
-        with patch.object(config, "directories", dirs):
-            while directories:
-                data = uuids.pop(0)
-                path = AgentUUID.save(data)
-                save_path = join(directories.pop(0), "uuid.dat")
-                self.assertEqual(path, save_path)
-                with open(save_path, "r") as saved_file:
-                    self.assertEqual(saved_file.read(), str(data))
