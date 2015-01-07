@@ -242,8 +242,8 @@ class TestAgentUUID(TestCase):
     def test_load_from_defaults(self):
         directory = tempfile.mkdtemp()
         uuid = uuid4()
-        self.addCleanup(self._rmdir, path)
-        filepath = join(path, "uuid.dat")
+        self.addCleanup(self._rmdir, directory)
+        filepath = join(directory, "uuid.dat")
         AgentUUID.save(uuid, filepath)
 
         loaded = AgentUUID.load(filepath)
