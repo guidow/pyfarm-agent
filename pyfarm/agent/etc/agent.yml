@@ -84,12 +84,6 @@ supervisor_log: $agent_logs_root/supervisor.log
 # are 'debug', 'info', 'warning', 'error' and 'critical'.
 agent_global_logger_level: info
 
-# The user agent the master will use when connecting to the agent's
-# REST api.  This value should only be changed if the master's code
-# is updated with a new user agent.  Change this value has not effect
-# on the master.
-master_user_agent: PyFarm/1.0 (master)
-
 # Configuration values which control how the url
 # for the master is constructed.  If 'master' is not set
 # the --master flag will be required to start the agent.
